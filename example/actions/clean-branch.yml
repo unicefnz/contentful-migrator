@@ -1,0 +1,18 @@
+# This optional action will remove any feature environments from Contentful when you delete their corresponding branch
+name: Remove Contentful Environment
+on:
+  delete
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: develop
+      - run: ./scripts/cleanup-env.sh
+        if: ${{ github.event.ref_type == 'branch' && github.event.ref != 'main' && github.event.ref != 'develop' }}
+        env:
+          BRANCH_NAME: ${{ github.event.ref }}
+          CONTENTFUL_ACCESS_TOKEN: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
