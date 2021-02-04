@@ -24,7 +24,9 @@ export async function migrate(opts: Options) {
   const space = await client.getSpace(options.spaceId);
 
   // Use strategy
-  const env = await options.strategy({ space });
+  const { env, onComplete } = await options.strategy({ space });
 
   await apply(env, options);
+
+  if (typeof onComplete === 'function') await onComplete();
 }

@@ -1,51 +1,20 @@
 import type { Space } from 'contentful-management/dist/typings/entities/space';
 import type { Environment } from 'contentful-management/dist/typings/entities/environment';
-import createEnvironment from './create-environment';
+import { createFeatureEnvironmentAction } from './actions/create-feature-env';
+import { getEnvOrCreateAliased } from './actions/get-env-or-create-aliased';
+import { getEnvironmentAction } from './actions/get-env';
 
 export interface ActionContext {
   space: Space;
 }
+export interface ActionResult {
+  env: Environment;
+  onComplete?(): Promise<void>;
+}
 
-export type StrategyAction = (context: ActionContext) => Promise<Environment>;
+export type StrategyAction = (context: ActionContext) => Promise<ActionResult>;
 
 export type Strategy<Opts = {}> = (options: Opts) => StrategyAction;
-
-function getEnvironmentAction(environmentId: string): StrategyAction {
-  return async ({ space }) => {
-    const env = await space.getEnvironment(environmentId);
-
-    if (!env) throw new Error('FATAL: Couldn\'t retrieve test environment');
-
-    return env;
-  };
-}
-function createFeatureEnvironmentAction(branch: string, recreateFeatureEnvironment: boolean, sourceEnv: string): StrategyAction {
-  return async ({ space }) => {
-    const envId = branch.replace(/\//g, '_');
-    // try get envId
-    let env = await space.getEnvironment(envId).catch((e) => {
-      try {
-        if (JSON.parse(e.message).status === 404) return null;
-      } catch (_) {
-        throw e;
-      }
-    });
-
-    // If the environment already exists, destroy it
-    if (env) {
-      if (recreateFeatureEnvironment) {
-        console.log(`🗑 Deleting feature environment ${envId}`);
-        await env.delete();
-      } else {
-        throw new Error('FATAL: Feature Environment already exists. This may indicate that the migration is already applied');
-      }
-    }
-    // Create a fresh environment from the test env
-    env = await createEnvironment(space, envId, sourceEnv);
-
-    return env;
-  };
-}
 
 export type BranchMatcher = string | string[] | ((name: string) => boolean);
 export interface DefaultStrategyOptions {
@@ -54,6 +23,20 @@ export interface DefaultStrategyOptions {
    * @default process.env.GITHUB_REF
    * */
   branchRef?: string;
+
+  /**
+   * If an environment is using aliases, create a new clone instead. Otherwise, apply straight to the target env
+   * @default true
+   * */
+  createNewAliasedEnvironments?: boolean;
+
+  /**
+   * Only applicable to migrations applied to aliased environments.
+   * Automatically update the alias to point at the new environment if the migration succeeds.
+   * If false, you will need to update the target manually
+   * @default false
+   * */
+  updateAliasOnSuccess?: boolean;
 
   /**
    * Whether to automatically destroy and recreate existing feature environments
@@ -103,6 +86,8 @@ function parseRef(ref: string): string {
 export function defaultStrategy({
   branchRef = process.env.GITHUB_REF,
   recreateFeatureEnvironments = false,
+  createNewAliasedEnvironments = true,
+  updateAliasOnSuccess = false,
   testEnvironment = 'test',
   productionBranch = ['master', 'main'],
   developmentBranch = ['dev', 'develop', 'development', 'test'],
@@ -111,8 +96,10 @@ export function defaultStrategy({
   if (!branchRef) throw new Error('No branch ref provided! This is required to determine which action to take');
   const branch = parseRef(branchRef);
 
-  if (match(branch, productionBranch)) return getEnvironmentAction('master');
-  if (match(branch, developmentBranch)) return getEnvironmentAction(testEnvironment);
+  const namedBranchAction = createNewAliasedEnvironments ? getEnvOrCreateAliased : getEnvironmentAction;
+
+  if (match(branch, productionBranch)) return namedBranchAction('master', updateAliasOnSuccess);
+  if (match(branch, developmentBranch)) return namedBranchAction(testEnvironment);
   if (match(branch, featureBranch)) return createFeatureEnvironmentAction(branch, recreateFeatureEnvironments, testEnvironment);
 
   throw new Error('Unable to determine which action to use for branch ' + branch);

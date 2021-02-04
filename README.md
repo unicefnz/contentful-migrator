@@ -98,7 +98,12 @@ You'll need to pass an action to take as the `strategy` prop. This action gets s
 to perform some actions, eventually returning the environment to perform the migrations on.
 
 ```ts
-type StrategyAction = (context: ActionContext) => Promise<Environment>;
+interface ActionResult {
+  env: Environment;
+  onComplete?(): void;
+}
+
+type StrategyAction = (context: ActionContext) => Promise<ActionResult>;
 ```
 
 ## Creating a migration
