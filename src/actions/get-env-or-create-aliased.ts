@@ -16,6 +16,7 @@ export function getEnvOrCreateAliased(environmentId: string, updateOnSuccess: bo
         async onComplete() {
           if (updateOnSuccess) {
             const alias = await space.getEnvironmentAlias(environmentId);
+            console.log(`🔀 Updating alias ${environmentId} to point to ${newName} (was ${alias.environment.sys.id}`);
             alias.environment.sys.id = newName;
             await alias.update();
           }
