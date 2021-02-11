@@ -99,7 +99,7 @@ export function defaultStrategy({
   const namedBranchAction = createNewAliasedEnvironments ? getEnvOrCreateAliased : getEnvironmentAction;
 
   if (match(branch, productionBranch)) return namedBranchAction('master', updateAliasOnSuccess);
-  if (match(branch, developmentBranch)) return namedBranchAction(testEnvironment);
+  if (match(branch, developmentBranch)) return namedBranchAction(testEnvironment, updateAliasOnSuccess);
   if (match(branch, featureBranch)) return createFeatureEnvironmentAction(branch, recreateFeatureEnvironments, testEnvironment);
 
   throw new Error('Unable to determine which action to use for branch ' + branch);

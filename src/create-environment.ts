@@ -48,7 +48,8 @@ async function createEnvironment(space: Space, name: string, from: string): Prom
     /* eslint-enable no-await-in-loop */
   }
 
-  await updateKeyAccess(space, environment);
+  // We don't actually use this and selecting based on name is confusing
+  // await updateKeyAccess(space, environment);
 
   return environment;
 }
