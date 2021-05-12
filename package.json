@@ -1,6 +1,6 @@
 {
   "name": "@unicefnz/contentful-migrator",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Opinionated Contentful migration tooling",
   "main": "dist/index.js",
   "types": "types/index.d.ts",
